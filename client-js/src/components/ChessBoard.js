@@ -81,6 +81,56 @@ export class ChessBoard {
      */
     render(gameState, selectedSquare, legalMoves = []) {
         // TODO: Implementar el renderizado del tablero según la especificación de requerimientos de arriba.
+        if (!gameState || !gameState.board) {
+            return;
+        }
+
+        let lastFrom = null;
+        let lastTo = null;
+        if (gameState.moves && gameState.moves.length > 0) {
+            const lastMove = gameState.moves[gameState.moves.length - 1];
+            lastFrom = lastMove.fromPos || null;
+            lastTo = lastMove.toPos || null;
+        }
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const tile = this.tiles[r][c];
+                const piece = gameState.board[r] ? gameState.board[r][c] : null;
+                const isLight = (r + c) % 2 === 0;
+
+                tile.className = `tile ${isLight ? "light" : "dark"}`;
+                tile.replaceChildren();
+
+                if (lastFrom && lastTo
+                    && ((lastFrom.row === r && lastFrom.col === c)
+                        || (lastTo.row === r && lastTo.col === c))) {
+                    tile.classList.add("last-move");
+                }
+
+                if (selectedSquare && selectedSquare.row === r && selectedSquare.col === c) {
+                    tile.classList.add("selected");
+                }
+
+                if (piece && piece.type && piece.type._name !== "PIECEEMPTY") {
+                    const pieceElement = document.createElement("span");
+                    pieceElement.className = piece.color && piece.color._name === "COLORWHITE"
+                        ? "piece-white"
+                        : "piece-black";
+                    pieceElement.textContent = getPieceGlyph(piece);
+                    tile.appendChild(pieceElement);
+                }
+
+                const isLegalMove = legalMoves.some(move => move.row === r && move.col === c);
+                if (isLegalMove) {
+                    const indicator = document.createElement("div");
+                    indicator.className = piece && piece.type && piece.type._name !== "PIECEEMPTY"
+                        ? "capture-ring"
+                        : "move-dot";
+                    tile.appendChild(indicator);
+                }
+            }
+        }
     }
 
     getElement() {

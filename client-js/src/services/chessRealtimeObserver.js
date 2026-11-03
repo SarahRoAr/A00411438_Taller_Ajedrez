@@ -21,20 +21,45 @@ export class ChessRealtimeObserver {
     async subscribe(communicator, servicePrx, roomCode, nickname, { onStateChanged, onGameFinished } = {}) {
         // TODO (Paso 3.1): Limpiar cualquier adaptador previo invocando await this.cleanupAdapter()
         // y almacenar los callbacks onStateChanged y onGameFinished.
+        await this.cleanupAdapter();
+        this.onStateChangedCallback = onStateChanged || null;
+        this.onGameFinishedCallback = onGameFinished || null;
 
         // TODO (Paso 3.2): Definir una clase servant (ej. WebChessObserverServant) que extienda
         // this.ChessApp.ChessObserver e implemente:
         //   - onGameStateChanged(newState, _current)
         //   - onGameFinished(finalState, winnerNickname, pointsDelta, _current)
+        class WebChessObserverServant extends this.ChessApp.ChessObserver {
+            onGameStateChanged(newState, _current) {
+                if (thisOwner.onStateChangedCallback) {
+                    thisOwner.onStateChangedCallback(newState);
+                }
+            }
+
+            onGameFinished(finalState, winnerNickname, pointsDelta, _current) {
+                if (thisOwner.onGameFinishedCallback) {
+                    thisOwner.onGameFinishedCallback(finalState, winnerNickname, pointsDelta);
+                }
+            }
+        }
+        const thisOwner = this;
 
         // TODO (Paso 3.3): Crear un ObjectAdapter sin endpoints con communicator.createObjectAdapter(""),
         // generar una identidad única con new this.Ice.Identity(this.Ice.generateUUID(), "ChessObserver"),
         // registrar la instancia del servant con this.adapter.add(...) y activar el adaptador.
+        this.adapter = await communicator.createObjectAdapter("");
+        this.identity = new this.Ice.Identity(this.Ice.generateUUID(), "ChessObserver");
+        const observerBase = this.adapter.add(new WebChessObserverServant(), this.identity);
+        await this.adapter.activate();
 
         // TODO (Paso 3.4): Obtener la conexión WebSocket activa con await servicePrx.ice_getConnection(),
         // asociarle el adaptador con connection.setAdapter(this.adapter), crear el proxy del observador
         // con this.ChessApp.ChessObserverPrx.uncheckedCast(...) e invocar:
         // await servicePrx.registerObserver(roomCode, nickname, observerPrx);
+        const connection = await servicePrx.ice_getConnection();
+        connection.setAdapter(this.adapter);
+        const observerPrx = this.ChessApp.ChessObserverPrx.uncheckedCast(observerBase);
+        await servicePrx.registerObserver(roomCode, nickname, observerPrx);
     }
 
     /**
@@ -44,10 +69,26 @@ export class ChessRealtimeObserver {
         // TODO (Paso 3.5): Limpiar los callbacks locales, invocar
         // await servicePrx.unregisterObserver(roomCode, nickname) (manejando posibles excepciones)
         // y llamar a await this.cleanupAdapter().
+        this.onStateChangedCallback = null;
+        this.onGameFinishedCallback = null;
+        try {
+            await servicePrx.unregisterObserver(roomCode, nickname);
+        } catch (_err) {
+            // La limpieza local continúa aunque la sala ya haya sido desconectada.
+        }
+        await this.cleanupAdapter();
     }
 
     async cleanupAdapter() {
         // TODO (Paso 3.6): Si this.adapter existe, remover this.identity y destruir el adaptador
         // (await this.adapter.destroy()), dejando this.adapter = null y this.identity = null.
+        if (this.adapter) {
+            if (this.identity) {
+                await this.adapter.remove(this.identity);
+            }
+            await this.adapter.destroy();
+            this.adapter = null;
+            this.identity = null;
+        }
     }
 }

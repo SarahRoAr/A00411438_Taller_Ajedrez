@@ -42,14 +42,57 @@ export class MoveHistory {
 
     build() {
         // TODO: Construir la estructura DOM según la especificación del requerimiento 1.
+        this.element.className = "moves-card";
+
+        const header = document.createElement("div");
+        header.className = "player-card-header";
+        header.textContent = "Historial de Jugadas";
+
+        this.listContainer.id = "moves-list";
+        this.listContainer.className = "moves-list";
+
+        this.element.appendChild(header);
+        this.element.appendChild(this.listContainer);
+        this.renderEmpty();
     }
 
     renderEmpty() {
         // TODO: Mostrar el estado vacío según la especificación del requerimiento 2.
+        this.listContainer.replaceChildren();
+        const emptyMessage = document.createElement("em");
+        emptyMessage.textContent = "Sin jugadas aún";
+        this.listContainer.appendChild(emptyMessage);
     }
 
     update(moves) {
         // TODO: Procesar el arreglo de jugadas según la especificación del requerimiento 3.
+        if (!moves || moves.length === 0) {
+            this.renderEmpty();
+            return;
+        }
+
+        this.listContainer.replaceChildren();
+
+        for (let i = 0; i < moves.length; i += 2) {
+            const turnNumber = Math.floor(i / 2) + 1;
+            const whiteMove = moves[i].moveNotation || "";
+            const blackMove = moves[i + 1] ? (moves[i + 1].moveNotation || "") : "";
+
+            const row = document.createElement("div");
+
+            const number = document.createElement("strong");
+            number.textContent = `${turnNumber}. `;
+
+            const text = document.createTextNode(
+                blackMove ? `${whiteMove} ${blackMove}` : whiteMove
+            );
+
+            row.appendChild(number);
+            row.appendChild(text);
+            this.listContainer.appendChild(row);
+        }
+
+        this.listContainer.scrollTop = this.listContainer.scrollHeight;
     }
 
     getElement() {

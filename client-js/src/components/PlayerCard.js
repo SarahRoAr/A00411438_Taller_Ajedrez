@@ -69,6 +69,33 @@ export class PlayerCard {
      */
     update(nickname, points, capturedPieces) {
         // TODO: Implementar la actualización de la tarjeta según la especificación de requerimientos de arriba.
+        this.nameEl.textContent = nickname || this.defaultName;
+
+        const playerPoints = typeof points === "number" ? points : 1200;
+        this.pointsEl.textContent = `${playerPoints} pts`;
+        this.tierBadge.update(calculateTierFromPoints(playerPoints));
+
+        if (!capturedPieces || capturedPieces.length === 0) {
+            this.capturedEl.textContent = "";
+            return;
+        }
+
+        const pieceOrder = {
+            PIECEQUEEN: 0,
+            PIECEROOK: 1,
+            PIECEBISHOP: 2,
+            PIECEKNIGHT: 3,
+            PIECEPAWN: 4
+        };
+
+        this.capturedEl.textContent = [...capturedPieces]
+            .sort((a, b) => {
+                const aType = a?.type?._name || "";
+                const bType = b?.type?._name || "";
+                return (pieceOrder[aType] ?? 99) - (pieceOrder[bType] ?? 99);
+            })
+            .map(piece => getPieceGlyph(piece, this.capturedColorKey))
+            .join(" ");
     }
 
     getElement() {
